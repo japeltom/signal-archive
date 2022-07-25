@@ -1,0 +1,17 @@
+{
+  "contact": "John Smith",
+  "db_file_name": "signal_backup.db",
+  "attachment_path": "attachment",
+  "avatar_path": "avatar",
+  "output_path": "archived",
+  "avatar": "avatar/_0.jpg",
+  "timezone": "Europe/Helsinki",
+  "default_recipient": "Jane Doe",
+  "contacts": {
+    "John Doe": {
+      "display_name": "Dad",
+      "avatar_file_name": "_1.jpg"
+    }
+  }
+}
+
