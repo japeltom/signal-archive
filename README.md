@@ -8,7 +8,9 @@ The purpose of this Python code is to transform a Signal backup file into an arc
 * Default recipient (key `default_recipient`) needs to be specified. The default recipient is the person from whose phone the backups are from.
 * The values of the key `contacts` allow to rename contacts and provide avatar files for each contact if they exist (this needs to be done manually as the files produced by signal-backup-decode do not allow to determine the avatar of a contact).
 * When done setuping, run `./signal-archive.py <file>` where `<file>` is the JSON file you have created.
+* Open the file `out.html` from the output path to view the messages.
 
 # Misc
 * Stickers are unsupported because the backup files I processed did not use them.
+* I recommend to view the HTML files on a desktop browser.
 * The format is designed in such a way that the body contents of the HTML files can be concatenated. Thus if you receive new messages but do not have older backups, do not worry and just concatenate to obtain one whole file. Files under `attachments` need to be copied as well.
