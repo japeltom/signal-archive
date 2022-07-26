@@ -65,9 +65,13 @@ class Video(Attachment):
 
 class Recipient:
 
-    def __init__(self, id, name, avatar_file_name=None):
+    def __init__(self, id, name, alternate_name=None, avatar_file_name=None):
+        # We have alternate_name because Signal has two sources for names. We
+        # use name as de facto name and alternate_name is used to perform
+        # searches with a given name more correctly.
         self.id = id
         self.name = name
+        self.alternate_name = alternate_name
         self.avatar_file_name = None
         self.thread_id = None
 
@@ -85,8 +89,8 @@ class AddressBook:
     def __init__(self):
         self.contacts = {}
 
-    def add_contact(self, id=None, name=None):
-        self.contacts[id] = Contact(id=id, name=name)
+    def add_contact(self, id=None, name=None, alternate_name=None):
+        self.contacts[id] = Contact(id=id, name=name, alternate_name=alternate_name)
 
     def get_contact(self, ids=None, name=None):
         if ids is None and name is None:
@@ -104,7 +108,7 @@ class AddressBook:
                 results.append(contact)
         elif name is not None:
             for contact in self.contacts.values():
-                if contact.name is not None and name in contact.name:
+                if (contact.name is not None and name in contact.name) or (contact.alternate_name is not None and name in contact.alternate_name):
                     results.append(contact)
 
         return results
@@ -114,8 +118,13 @@ class AddressBook:
         address_book = cls()
         for row in cursor.execute("SELECT * FROM recipient"):
             if row["group_id"] is not None: continue
-            name = row["signal_profile_name"] if row["signal_profile_name"] is not None else row["system_display_name"]
-            address_book.add_contact(id=int(row["_id"]), name=name)
+            if row["signal_profile_name"] is not None and len(row["signal_profile_name"]) > 0:
+                name = row["signal_profile_name"]
+                alternate_name = row["system_display_name"]
+            else:
+                name = row["system_display_name"]
+                alternate_name = None
+            address_book.add_contact(id=int(row["_id"]), name=name, alternate_name=alternate_name)
 
         return address_book
 

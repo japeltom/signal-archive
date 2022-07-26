@@ -34,10 +34,12 @@ def contact_from_row(row):
 
     if row["signal_profile_name"] is not None and len(row["signal_profile_name"]) > 0:
         name = row["signal_profile_name"]
+        alternate_name = row["system_display_name"]
     else:
         name = row["system_display_name"]
+        alternate_name = None
 
-    return Contact(id=int(row["_id"]), name=name)
+    return Contact(id=int(row["_id"]), name=name, alternate_name=alternate_name)
 
 def find_contact(cursor, s):
     """Find all contacts whose name contains the given string."""
@@ -115,7 +117,7 @@ def get_messages(cursor, recipient, address_book, default_recipient=None):
     messages = []
 
     if not (isinstance(recipient, Group) or isinstance(recipient, Contact)):
-        raise Exception("Uknown recipient type '{}'.".format(type(recipient)))
+        raise Exception("Unknown recipient type '{}'.".format(type(recipient)))
 
     if recipient.thread_id is None:
         find_thread_recipient(cursor, recipient)

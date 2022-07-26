@@ -9,7 +9,7 @@ from data import *
 from db import find_contact, find_group, get_messages, setup_db
 from util import get_config
 
-def produce_output_file(config, messages, timezone, address_book, default_recipient):
+def produce_output_file(config, recipient, messages, timezone, address_book, default_recipient):
     """Produce a single HTML output file based on the given data."""
 
     # Notice: all output file formatting is here.
@@ -57,6 +57,7 @@ def produce_output_file(config, messages, timezone, address_book, default_recipi
     colors = {}
 
     min_date = None
+    copy_avatars = set()
 
     for message in messages:
         if min_date is None: min_date = datetime.datetime.fromtimestamp(message.date, tz=timezone).strftime("%Y-%m-%d")
@@ -65,7 +66,8 @@ def produce_output_file(config, messages, timezone, address_book, default_recipi
 
         # Avatar.
         if message.sender.avatar_file_name is not None:
-            out.write('<div class="avatar"><img src="{}" /></div>\n'.format(os.path.join(config["avatar_path"], message.sender.avatar_file_name)))
+            copy_avatars.add(message.sender.avatar_file_name)
+            out.write('<div class="avatar"><img src="{}" /></div>\n'.format(os.path.join(config["output_path"], "other", message.sender.avatar_file_name)))
         else:
             if not message.sender.name in colors:
                 colors[message.sender.name] = color_list[color_idx]
@@ -158,7 +160,9 @@ def produce_output_file(config, messages, timezone, address_book, default_recipi
     shutil.copy("html/style.css", other_path)
     shutil.copy("html/script.js", other_path)
     if "avatar" in config:
-      shutil.copy(config["avatar"], os.path.join(other_path, os.path.basename(config["avatar"])))
+        shutil.copy(config["avatar"], os.path.join(other_path, os.path.basename(config["avatar"])))
+    for file_name in copy_avatars:
+        shutil.copy(os.path.join(config["avatar_path"], file_name), other_path)
 
 if __name__ == "__main__":
     config = get_config()
@@ -174,19 +178,6 @@ if __name__ == "__main__":
     # Contacts.
     address_book = AddressBook.from_db_cursor(cursor)
     default_recipient = address_book.get_contact(name=config["default_recipient"])[0]
-    # Edit contacts based on the config.
-    if not "contacts" in config:
-        config["contacts"] = {}
-    for recipient, recipient_data in config["contacts"].items():
-        contacts = address_book.get_contact(name=recipient)
-        print(find_contact(cursor, recipient)[0])
-        if len(contacts) > 0:
-            contact = contacts[0]
-            if "display_name" in recipient_data:
-                contact.name = recipient_data["display_name"]
-            if "avatar_file_name" in recipient_data:
-                contact.avatar_file_name = recipient_data["avatar_file_name"]
-            print(contact)
 
     # Figure out the recipient (contact or group) whose messages we are after.
     if "contact" in config:
@@ -207,5 +198,17 @@ if __name__ == "__main__":
     if len(messages) == 0:
         raise SystemExit("No messages found.")
 
-    produce_output_file(config, messages, timezone, address_book, default_recipient)
+    # Edit contacts based on the config.
+    if not "contacts" in config:
+        config["contacts"] = {}
+    for _recipient, recipient_data in config["contacts"].items():
+        contacts = address_book.get_contact(name=_recipient)
+        if len(contacts) > 0:
+            contact = contacts[0]
+            if "display_name" in recipient_data:
+                contact.name = recipient_data["display_name"]
+            if "avatar_file_name" in recipient_data:
+                contact.avatar_file_name = recipient_data["avatar_file_name"]
+
+    produce_output_file(config, recipient, messages, timezone, address_book, default_recipient)
 
