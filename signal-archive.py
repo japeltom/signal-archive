@@ -18,14 +18,16 @@ def produce_output_file(config, messages, timezone, address_book, default_recipi
 
     out = open(os.path.join(config["output_path"], "out.html"), mode="w")
     os.makedirs(os.path.join(config["output_path"], "attachment"), exist_ok=True)
+    os.makedirs(os.path.join(config["output_path"], "other"), exist_ok=True)
 
     header = """
     <!DOCTYPE html>
     <html>
     <head>
     <title>{0}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta charset="utf-8" />
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="other/style.css" />
     </head>
     <body>
 
@@ -39,7 +41,7 @@ def produce_output_file(config, messages, timezone, address_book, default_recipi
     </div>
 
     <div id="messages">
-    """.format(recipient.name, '<img src="{}" />'.format(config["avatar"]) if "avatar" in config else "")
+    """.format(recipient.name, '<img src="other/{}" />'.format(os.path.basename(config["avatar"])) if "avatar" in config else "")
 
     def replace_url_to_link(s):
         regex = r"(?i)\b((?:[a-z][\w-]+:(?:/{1,3}|[a-z0-9%])|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"
@@ -142,7 +144,7 @@ def produce_output_file(config, messages, timezone, address_book, default_recipi
       To: <input type="date" id="search-date-to" min="{0}" max="{1}" onchange="live_search()" />
     </div>
 
-    <script src="script.js"></script>
+    <script src="other/script.js"></script>
 
     </body>
     </html>
@@ -152,8 +154,11 @@ def produce_output_file(config, messages, timezone, address_book, default_recipi
 
     out.close()
 
-    shutil.copy("html/style.css", config["output_path"])
-    shutil.copy("html/script.js", config["output_path"])
+    other_path = os.path.join(config["output_path"], "other")
+    shutil.copy("html/style.css", other_path)
+    shutil.copy("html/script.js", other_path)
+    if "avatar" in config:
+      shutil.copy(config["avatar"], os.path.join(other_path, os.path.basename(config["avatar"])))
 
 if __name__ == "__main__":
     config = get_config()
@@ -174,12 +179,14 @@ if __name__ == "__main__":
         config["contacts"] = {}
     for recipient, recipient_data in config["contacts"].items():
         contacts = address_book.get_contact(name=recipient)
+        print(find_contact(cursor, recipient)[0])
         if len(contacts) > 0:
             contact = contacts[0]
             if "display_name" in recipient_data:
                 contact.name = recipient_data["display_name"]
             if "avatar_file_name" in recipient_data:
                 contact.avatar_file_name = recipient_data["avatar_file_name"]
+            print(contact)
 
     # Figure out the recipient (contact or group) whose messages we are after.
     if "contact" in config:
