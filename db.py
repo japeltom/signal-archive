@@ -9,6 +9,7 @@ types = {"application/pdf": (Attachment, ["pdf"]),
          "audio/mpeg": (Audio, ["mpeg"]),
          "audio/ogg; codecs=opus": (Audio, ["ogg"]),
          "audio/wav": (Audio, ["wav"]),
+         "image/*": (Image, ["jpg"]),
          "image/bmp": (Image, ["bmp"]),
          "image/gif": (Image, ["gif"]),
          "image/heif": (Image, ["heif"]),
@@ -17,6 +18,7 @@ types = {"application/pdf": (Attachment, ["pdf"]),
          "image/webp": (Image, ["webp"]),
          "image/x-icon": (Attachment, [""]),
          "text/x-signal-plain": (Attachment, [""]),
+         "video/*": (Video, ["mp4"]),
          "video/mp4": (Video, ["mp4", ""]), # strangely some mp4 files are without extension
          "video/mpeg": (Video, ["mp4"]),
          "video/quicktime": (Video, ["qt"]),
@@ -176,8 +178,8 @@ def get_messages(cursor, recipient, address_book, default_recipient=None):
         attachments = []
         for row_attachment in cursor.execute("SELECT * FROM part WHERE mid = ?", (row["_id"], )):
             content_type = row_attachment["ct"]
-            cls, extensions = types[content_type]
             file_name_base = "{}_{}".format(row_attachment["unique_id"], row_attachment["_id"])
+            cls, extensions = types[content_type]
             attachments.append(cls(file_name_base=file_name_base, file_name_extensions=extensions, content_type=content_type))
 
         # quotes

@@ -67,7 +67,7 @@ def produce_output_file(config, recipient, messages, timezone, address_book, def
         # Avatar.
         if message.sender.avatar_file_name is not None:
             copy_avatars.add(message.sender.avatar_file_name)
-            out.write('<div class="avatar"><img src="{}" /></div>\n'.format(os.path.join(config["output_path"], "other", message.sender.avatar_file_name)))
+            out.write('<div class="avatar"><img src="{}" /></div>\n'.format(os.path.join("other", message.sender.avatar_file_name)))
         else:
             if not message.sender.name in colors:
                 colors[message.sender.name] = color_list[color_idx]

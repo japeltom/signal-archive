@@ -1,3 +1,6 @@
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+
 from util import get_config
 from db import setup_db, list_groups, list_contacts
 
