@@ -16,6 +16,7 @@ def produce_output_file(config, recipient, messages, timezone, address_book, def
 
     # The below code is perhaps not very nice but it is simple.
 
+    os.makedirs(config["output_path"], exist_ok=True)
     out = open(os.path.join(config["output_path"], "out.html"), mode="w")
     os.makedirs(os.path.join(config["output_path"], "attachment"), exist_ok=True)
     os.makedirs(os.path.join(config["output_path"], "other"), exist_ok=True)
@@ -52,7 +53,7 @@ def produce_output_file(config, recipient, messages, timezone, address_book, def
     out.write(header + "\n")
 
     # TODO: Add a mechanism to produce arbitrarily many colors.
-    color_list = ["#36389d", "#6c3483", "#922b21", "#28b463", "#d4ac0d", "#5f6a6a"]
+    color_list = ["#36389d", "#6c3483", "#922b21", "#28b463", "#d4ac0d", "#5f6a6a", "#92a8d1"]
     color_idx = 0
     colors = {}
 
@@ -160,7 +161,7 @@ def produce_output_file(config, recipient, messages, timezone, address_book, def
     shutil.copy("html/style.css", other_path)
     shutil.copy("html/script.js", other_path)
     if "avatar" in config:
-        shutil.copy(config["avatar"], os.path.join(other_path, os.path.basename(config["avatar"])))
+        shutil.copy(os.path.join(config["avatar_path"], config["avatar"]), other_path)
     for file_name in copy_avatars:
         shutil.copy(os.path.join(config["avatar_path"], file_name), other_path)
 
@@ -177,7 +178,10 @@ if __name__ == "__main__":
 
     # Contacts.
     address_book = AddressBook.from_db_cursor(cursor)
-    default_recipient = address_book.get_contact(name=config["default_recipient"])[0]
+    default_recipient = address_book.get_contact(name=config["default_recipient"])
+    if len(default_recipient) == 0:
+        raise SystemExit("Default recipient with name '{}' not found.".format(config["default_recipient"]))
+    default_recipient = default_recipient[0]
 
     # Figure out the recipient (contact or group) whose messages we are after.
     if "contact" in config:

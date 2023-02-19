@@ -4,7 +4,7 @@
   "attachment_path": "attachment",
   "avatar_path": "avatar",
   "output_path": "archived",
-  "avatar": "avatar/_0.jpg",
+  "avatar": "_0.jpg",
   "timezone": "Europe/Helsinki",
   "default_recipient": "Jane Doe",
   "contacts": {

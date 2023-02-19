@@ -1,26 +1,5 @@
 from dataclasses import dataclass 
 
-from typing import List, Optional
-
-from pure_protobuf.dataclasses_ import field, message, optional_field
-from pure_protobuf.types import uint64
-
-# Reaction data format found in
-# https://github.com/signalapp/Signal-Android/blob/main/app/src/main/proto/Database.proto
-
-@message
-@dataclass
-class ReactionData:
-    emoji: str = optional_field(1)
-    author: Optional[uint64] = optional_field(2)
-    sentTime: Optional[uint64] = optional_field(3)
-    receivedTime: Optional[uint64] = optional_field(4)
-
-@message
-@dataclass
-class ReactionDataList:
-    reactions: List[ReactionData] = field(1, default_factory=list)
-
 class Reaction:
 
   def __init__(self, contact, emoji, date):
@@ -30,22 +9,14 @@ class Reaction:
 
 class Message:
 
-    def __init__(self, id, sender, date, message, reactions=None, quote=None):
+    def __init__(self, id, sender, date, message, reactions=None, attachments=None, quote=None):
         self.id = id
         self.sender = sender
         self.date = date
         self.message = message
         self.reactions = reactions if reactions is not None else []
-        self.quote = quote
-
-class SMS(Message):
-    pass
-
-class MMS(Message):
-
-    def __init__(self, id, sender, date, message, reactions=None, attachments=None, quote=None):
-        super().__init__(id, sender, date, message, reactions, quote)
         self.attachments = attachments
+        self.quote = quote
 
 class Attachment:
 

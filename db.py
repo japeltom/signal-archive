@@ -3,12 +3,16 @@ import sqlite3
 from data import *
 
 types = {"application/pdf": (Attachment, ["pdf"]),
+         "application/zip": (Attachment, ["zip"]),
          "audio/aac": (Audio, ["aac", "m4a"]),
+         "audio/AMR": (Audio, ["amr"]),
          "audio/mp3": (Audio, ["mp3"]),
          "audio/mp4": (Audio, ["mp4"]),
          "audio/mpeg": (Audio, ["mpeg"]),
+         "audio/ogg": (Audio, ["ogg"]),
          "audio/ogg; codecs=opus": (Audio, ["ogg"]),
          "audio/wav": (Audio, ["wav"]),
+         "audio/x-m4a": (Audio, ["mp4"]),
          "image/*": (Image, ["jpg"]),
          "image/bmp": (Image, ["bmp"]),
          "image/gif": (Image, ["gif"]),
@@ -17,6 +21,7 @@ types = {"application/pdf": (Attachment, ["pdf"]),
          "image/png": (Image, ["png"]),
          "image/webp": (Image, ["webp"]),
          "image/x-icon": (Attachment, [""]),
+         "text/plain": (Attachment, [""]),
          "text/x-signal-plain": (Attachment, [""]),
          "video/*": (Video, ["mp4"]),
          "video/mp4": (Video, ["mp4", ""]), # strangely some mp4 files are without extension
@@ -79,9 +84,9 @@ def list_contacts(cursor):
 def find_thread_recipient(cursor, recipient):
     """Find the thread id for the recipient. This is for internal use."""
 
-    # We currently assume that thread.recipient_ids contains only one recipient
+    # We currently assume that thread.recipient_id contains only one recipient
     # id. This has been true for all databases encountered so far.
-    rows = cursor.execute("SELECT * FROM thread WHERE recipient_ids = ? LIMIT 2", (str(recipient.id), )).fetchall()
+    rows = cursor.execute("SELECT * FROM thread WHERE recipient_id = ? LIMIT 2", (str(recipient.id), )).fetchall()
     if len(rows) > 1:
         raise NotImplementedError("More than one thread found for recipient with name '{}'. Handling this is unsupported.".format(recipient.name))
 
@@ -94,10 +99,10 @@ def get_messages(cursor, recipient, address_book, default_recipient=None):
     """
     My current understanding is the following.
 
-    There are two types of messages SMS and MMS corresponding to the tables sms
-    and mms. The recipient (a contact or a group) has a thread id which is used
-    to obtain messages related to this recipient from both tables. Determining
-    the sender of a message is curiously tricky.
+    Messages are stored in the table messages. The recipient (a contact or a
+    group) has a thread id which is used to obtain messages related to this
+    recipient from this table. Determining the sender of a message is curiously
+    tricky.
 
     The default recipient is the person from whose backups the database was
     obtained from. My understanding is that this recipient cannot be determined
@@ -105,15 +110,13 @@ def get_messages(cursor, recipient, address_book, default_recipient=None):
 
     If the recipient is a group, then the address field tells the id of the
     sender in the table recipient (this is implemented in the address book)
-    except when the sender is the default recipient. This works similarly for
-    both SMS and MMS messages.
+    except when the sender is the default recipient.
 
     If the recipient is a contact, then the address field always points to the
-    non-default user in the conversation. It seems to me that for SMS messages
-    the protocol field is NULL when the message was sent by the default user
-    and not NULL otherwise. For MMS messages, if the date_server field is -1,
-    then the message was sent by the default user. All of this is based on
-    observations, and could be wrong. It works for me though.
+    non-default user in the conversation. It seems to me that if the
+    date_server field is -1, then the message was sent by the default user. All
+    of this is based on observations, and could be wrong. It works for me
+    though.
     """
 
     messages = []
@@ -136,40 +139,28 @@ def get_messages(cursor, recipient, address_book, default_recipient=None):
         return contact
 
     def process_reactions(row):
-        reactions_blob = row["reactions"]
         reactions = []
-        if reactions_blob is not None:
-            for data in ReactionDataList.loads(reactions_blob).reactions:
-                reactions.append(Reaction(contact=address_book.get_contact(ids=data.author)[0], emoji=data.emoji, date=data.sentTime/1000))
+        for row in cursor.execute("SELECT * FROM reaction WHERE message_id = ?", (row["_id"], )).fetchall():
+            reaction = Reaction(contact=address_book.get_contact(ids=int(row["author_id"]))[0], emoji=row["emoji"], date=int(row["date_sent"])/1000)
+            reactions.append(reaction)
 
         return reactions
 
-    # Get SMS messages.
-    for row in cursor.execute("SELECT * FROM sms WHERE thread_id = ?", (recipient.thread_id, )).fetchall():
+    # Get messages.
+    for row in cursor.execute("SELECT * FROM message WHERE thread_id = ?", (recipient.thread_id, )).fetchall():
         # sender
         if isinstance(recipient, Group):
-            contact = process_contact_group(row["address"])
-        else:
-            if row["protocol"] is None:
-                contact = default_recipient
-            else:
-                contact = address_book.get_contact(int(row["address"]))[0]
-
-        # reactions
-        reactions = process_reactions(row)
-
-        messages.append(SMS(id=int(row["_id"]), sender=contact, date=int(row["date"])/1000, message=row["body"], reactions=reactions))
-
-    # Get MMS messages.
-    for row in cursor.execute("SELECT * FROM mms WHERE thread_id = ?", (recipient.thread_id, )).fetchall():
-        # sender
-        if isinstance(recipient, Group):
-            contact = process_contact_group(row["address"])
+            contact = process_contact_group(row["recipient_id"])
         else:
             if row["date_server"] == -1:
                 contact = default_recipient
             else:
-                contact = address_book.get_contact(int(row["address"]))[0]
+                contact = address_book.get_contact(int(row["recipient_id"]))[0]
+        # If the name is not available, then our best option is to use the
+        # default recipient. It seems that this happens with messages
+        # concerning changes in group settings.
+        if len(contact.name) == 0:
+          contact = default_recipient
 
         # reactions
         reactions = process_reactions(row)
@@ -191,7 +182,7 @@ def get_messages(cursor, recipient, address_book, default_recipient=None):
         else:
             quote = None
 
-        messages.append(MMS(id=int(row["_id"]), sender=contact, date=int(row["date"])/1000, message=row["body"], reactions=reactions, attachments=attachments, quote=quote))
+        messages.append(Message(id=int(row["_id"]), sender=contact, date=int(row["date_sent"])/1000, message=row["body"], reactions=reactions, attachments=attachments, quote=quote))
 
     # Order by date.
     messages.sort(key=lambda m: m.date)
