@@ -1,5 +1,3 @@
-from dataclasses import dataclass 
-
 class Reaction:
 
   def __init__(self, contact, emoji, date):
@@ -9,7 +7,7 @@ class Reaction:
 
 class Message:
 
-    def __init__(self, id, sender, date, message, reactions=None, attachments=None, quote=None):
+    def __init__(self, id, sender, date, message, reactions=None, attachments=None, quote=None, mentions=None):
         self.id = id
         self.sender = sender
         self.date = date
@@ -17,12 +15,13 @@ class Message:
         self.reactions = reactions if reactions is not None else []
         self.attachments = attachments
         self.quote = quote
+        self.mentions = mentions
 
 class Attachment:
 
-    def __init__(self, file_name_base, file_name_extensions, content_type):
-        self.file_name_base = file_name_base
-        self.file_name_extensions = file_name_extensions
+    def __init__(self, file_name, timestamp, content_type):
+        self.file_name = file_name
+        self.timestamp = timestamp
         self.content_type = content_type
 
 class Audio(Attachment):
@@ -36,14 +35,15 @@ class Video(Attachment):
 
 class Recipient:
 
-    def __init__(self, id, name, alternate_name=None, avatar_file_name=None):
+    def __init__(self, id, name, alternate_name=None, avatar_file_name=None, color=None):
         # We have alternate_name because Signal has two sources for names. We
         # use name as de facto name and alternate_name is used to perform
         # searches with a given name more correctly.
         self.id = id
         self.name = name
         self.alternate_name = alternate_name
-        self.avatar_file_name = None
+        self.avatar_file_name = avatar_file_name
+        self.color = color
         self.thread_id = None
 
     def __str__(self):
@@ -89,11 +89,14 @@ class AddressBook:
         address_book = cls()
         for row in cursor.execute("SELECT * FROM recipient"):
             if row["group_id"] is not None: continue
-            if row["signal_profile_name"] is not None and len(row["signal_profile_name"]) > 0:
-                name = row["signal_profile_name"]
-                alternate_name = row["system_display_name"]
+            primary_source = row["profile_joined_name"]
+            secondary_source = row["system_joined_name"]
+            if primary_source is not None and len(primary_source) > 0:
+                name = primary_source
+                alternate_name = secondary_source
             else:
-                name = row["system_display_name"]
+                if secondary_source is None or (secondary_source is not None and len(secondary_source) == 0): continue
+                name = secondary_source
                 alternate_name = None
             address_book.add_contact(id=int(row["_id"]), name=name, alternate_name=alternate_name)
 
